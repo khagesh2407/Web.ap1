@@ -29,6 +29,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install Android SDK packages
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
@@ -39,7 +41,7 @@ jobs:
           gradle-version: "8.9"
 
       - name: Check hosted website availability
-        run: curl --fail --silent --show-error --location --max-time 30 --output /dev/null --write-out "COMPUCARE website HTTP %{http_code}\n" https://compucare-service-sf3up4.v2.appdeploy.ai/
+        run: curl --fail --silent --show-error --location --max-time 30 --output /dev/null --write-out "COMPUCARE website HTTP %{http_code}\\n" https://compucare-service-sf3up4.v2.appdeploy.ai/
 
       - name: Build debug APK
         run: gradle --no-daemon clean assembleDebug
