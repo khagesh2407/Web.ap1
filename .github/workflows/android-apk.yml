@@ -55,6 +55,16 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           sha256sum "$APK" | tee app/build/outputs/apk/debug/app-debug.apk.sha256
 
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: compucare-service-debug-apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/app-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Install and launch on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -72,13 +82,3 @@ jobs:
             adb exec-out screencap -p > app/build/outputs/apk/debug/compucare-emulator-home.png
             test -s app/build/outputs/apk/debug/compucare-emulator-home.png
 
-      - name: Upload APK and smoke-test evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: compucare-service-debug-apk
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/app-debug.apk.sha256
-            app/build/outputs/apk/debug/compucare-emulator-home.png
-          if-no-files-found: error
-          retention-days: 7
