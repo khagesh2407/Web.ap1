@@ -69,8 +69,8 @@ jobs:
             sleep 25
             adb shell pidof com.zkelite.compucareservice
             adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "com.zkelite.compucareservice"
-            adb shell screencap -p /sdcard/compucare-home.png
-            adb pull /sdcard/compucare-home.png app/build/outputs/apk/debug/compucare-emulator-home.png
+            adb exec-out screencap -p > app/build/outputs/apk/debug/compucare-emulator-home.png
+            test -s app/build/outputs/apk/debug/compucare-emulator-home.png
 
       - name: Upload APK and smoke-test evidence
         uses: actions/upload-artifact@v4
