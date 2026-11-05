@@ -2,11 +2,11 @@ plugins { id("com.android.application") }
 
 android {
     namespace = "com.zkelite.compucareservice"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.zkelite.compucareservice"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
     }
