@@ -28,7 +28,11 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends Activity {
     private static final String BASE = SyncWorker.BASE;
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
-    private final OkHttpClient http = new OkHttpClient();
+    private final OkHttpClient http = new OkHttpClient.Builder()
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
+            .build();
     private OfflineStore store;
     private LinearLayout root, content;
     private TextView statusText, titleText;
@@ -178,8 +182,10 @@ public class MainActivity extends Activity {
         statusText.setText("Syncing with COMPUCARE…");
         new Thread(() -> {
             try {
-                JSONObject profile = get("/api/bootstrap");
-                JSONArray tickets = get("/api/tickets").optJSONArray("tickets");
+                JSONObject workspace = get("/api/workspace");
+                JSONObject profile = workspace.optJSONObject("profile");
+                if (profile == null) throw new IOException("The service workspace response was incomplete.");
+                JSONArray tickets = workspace.optJSONArray("tickets");
                 if (tickets == null) tickets = new JSONArray();
                 store.cacheTickets(tickets);
                 role = profile.optString("role", "customer");
@@ -195,12 +201,19 @@ public class MainActivity extends Activity {
                     renderTickets(finalTickets);
                 });
             } catch (Exception e) {
+                boolean sessionExpired = e instanceof ApiException && ((ApiException)e).code == 401;
+                if (sessionExpired) {
+                    SecureTokenStore.clear(this);
+                    token = null;
+                }
                 runOnUiThread(() -> {
                     busy = false;
-                    statusText.setText("Offline · Showing saved data · " + store.pendingCount() + " pending");
-                    renderCached();
-                    if (e instanceof ApiException && ((ApiException)e).code == 401) {
-                        statusText.setText("Session expired · Sign in again when online");
+                    if (sessionExpired) {
+                        showLogin();
+                        toast("Your session expired. Sign in again to continue. Offline changes remain saved on this device.");
+                    } else {
+                        statusText.setText("Offline · Showing saved data · " + store.pendingCount() + " pending");
+                        renderCached();
                     }
                 });
             }
