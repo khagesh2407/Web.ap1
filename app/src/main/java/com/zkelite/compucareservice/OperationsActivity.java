@@ -140,7 +140,7 @@ public final class OperationsActivity extends Activity {
             case "purchaseOrders": return inventory;
             case "organizations": case "slaPolicies": case "agreements": return admin;
             case "warranties": return support;
-            case "emailDeliveries": return admin || !role.equals("customer");
+            case "emailDeliveries": return admin;\n            case "tickets": return admin || dispatch;
             default: return false;
         }
     }
@@ -190,6 +190,7 @@ public final class OperationsActivity extends Activity {
             case "warranties": return "Register warranty claim";
             case "areas": return "Add service region";
             case "emailDeliveries": return "Send test email";
+            case "tickets": return "Assign engineer";
             default: return null;
         }
     }
@@ -213,6 +214,7 @@ public final class OperationsActivity extends Activity {
             case "bids": action="bid.create"; specs=new String[]{"listingId|Listing ID","partnerId|Verified partner ID","amount|Bid amount (₹)","proposal|Proposal"}; break;
             case "warranties": action="warranty.create"; specs=new String[]{"customerEmail|Customer email","provider|Provider name","reference|Claim reference","notes|Claim notes"}; break;
             case "areas": action="service_area.create"; specs=new String[]{"code|Region code","name|Region name","city|City","state|State","postalCodes|PIN codes (comma separated)"}; break;
+            case "tickets": action="ticket.assign"; specs=new String[]{"ticketId|Ticket ID","engineerId|Engineer ID (or auto)"}; break;
             case "emailDeliveries": action="email.test"; specs=new String[]{}; break;
         }
         if (action == null) return;
@@ -242,7 +244,7 @@ public final class OperationsActivity extends Activity {
                         } else payload.put(k,value);
                     }
                 } catch(Exception ex) { toast("Check numeric fields and try again."); return; }
-                submitAction(payload);
+                if (chosenAction.equals("estimate.create")) {\n                    JSONArray items=new JSONArray(); JSONObject line=new JSONObject();\n                    line.put("description",payload.optString("description")); line.put("quantity",payload.optDouble("quantity",1)); line.put("unitPrice",payload.optDouble("unitPrice",0));\n                    items.put(line); payload.remove("description"); payload.remove("quantity"); payload.remove("unitPrice"); payload.put("items",items);\n                }\n                if (chosenAction.equals("ticket.assign") && "auto".equalsIgnoreCase(payload.optString("engineerId"))) payload.put("autoAssign",true);\n                submitAction(payload);
             }).show();
     }
 
