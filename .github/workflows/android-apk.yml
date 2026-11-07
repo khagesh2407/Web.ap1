@@ -78,34 +78,7 @@ jobs:
           emulator-boot-timeout: 900
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
-            set -Eeuo pipefail
-            mkdir -p app/build/outputs/apk/debug/emulator-diagnostics
-            DIAG="app/build/outputs/apk/debug/emulator-diagnostics"
-            on_failure() {
-              status=$?
-              adb logcat -d -v threadtime > "$DIAG/logcat.txt" 2>&1 || true
-              adb shell dumpsys activity activities > "$DIAG/activities.txt" 2>&1 || true
-              adb shell dumpsys package com.zkelite.compucareservice > "$DIAG/package.txt" 2>&1 || true
-              adb shell pm list packages -3 > "$DIAG/installed-packages.txt" 2>&1 || true
-              echo "Emulator smoke test failed with exit code $status"
-              exit "$status"
-            }
-            trap on_failure ERR
-            adb wait-for-device
-            for attempt in $(seq 1 180); do
-              booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
-              [ "$booted" = "1" ] && break
-              sleep 2
-            done
-            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb shell am force-stop com.zkelite.compucareservice
-            adb shell am start -W -n com.zkelite.compucareservice/.MainActivity
-            sleep 25
-            adb shell pidof com.zkelite.compucareservice
-            adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "com.zkelite.compucareservice"
-            adb exec-out screencap -p > app/build/outputs/apk/debug/compucare-emulator-home.png
-            test -s app/build/outputs/apk/debug/compucare-emulator-home.png
+            bash -euo pipefail -c 'mkdir -p app/build/outputs/apk/debug/emulator-diagnostics; DIAG="app/build/outputs/apk/debug/emulator-diagnostics"; trap "status=\$?; adb logcat -d -v threadtime > \"\$DIAG/logcat.txt\" 2>&1 || true; adb shell dumpsys activity activities > \"\$DIAG/activities.txt\" 2>&1 || true; adb shell dumpsys package com.zkelite.compucareservice > \"\$DIAG/package.txt\" 2>&1 || true; exit \$status" ERR; adb wait-for-device; for attempt in \$(seq 1 180); do booted="\$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r" || true)"; [ "\$booted" = "1" ] && break; sleep 2; done; test "\$(adb shell getprop sys.boot_completed | tr -d "\r")" = "1"; adb install -r app/build/outputs/apk/debug/app-debug.apk; adb shell am force-stop com.zkelite.compucareservice; adb shell am start -W -n com.zkelite.compucareservice/.MainActivity; sleep 25; adb shell pidof com.zkelite.compucareservice; adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep "com.zkelite.compucareservice"; adb exec-out screencap -p > app/build/outputs/apk/debug/compucare-emulator-home.png; test -s app/build/outputs/apk/debug/compucare-emulator-home.png'
 
       - name: Upload emulator diagnostics
         if: always()
