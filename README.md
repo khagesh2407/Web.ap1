@@ -1,20 +1,25 @@
-# COMPUCARE SERVICE Android app
+# COMPUCARE SERVICE Native Android app
 
-Android WebView client for the hosted service app: https://compucare-service-sf3up4.v2.appdeploy.ai/
+A native Android client for COMPUCARE SERVICE. The app uses Android native views and does not render the website inside a WebView.
 
+## Capabilities
+- Existing COMPUCARE account sign-in through the system browser and a one-time secure token handoff.
+- Native customer and staff workspace screens.
+- Native ticket list, service request form and staff ticket status updates.
+- Local SQLite cache for previously synchronized tickets.
+- Offline request/status outbox with automatic WorkManager synchronization when connectivity returns.
+- Access token encrypted with Android Keystore AES-GCM; backend and database remain hosted.
+
+## Build
 - Application ID: `com.zkelite.compucareservice`
 - Minimum Android: 7.0 (API 24)
-- Compile/target SDK: 36 (Android 16)
+- Compile/target SDK: 36
 - Java 17, Android Gradle Plugin 8.10.1, Gradle 8.11.1
 
-The Android client loads the live HTTPS app; backend, database and credentials remain hosted. The WebView enables JavaScript and DOM storage for the hosted app. Review the app's actual collection, transfer, retention, deletion, backup and log behavior before publishing privacy disclosures.
+GitHub Actions builds and emulator-smoke-tests the APK. Debug builds are for testing, not Play Store publication. A production APK/AAB must be signed using the owner's upload key.
 
-## Builds and signing
+## Offline behavior
+Previously synchronized tickets remain readable offline. New service requests and permitted staff status changes are queued locally and sent when a network is available. First sign-in, live data refresh and server-side actions require connectivity. If a session expires, the user must sign in again online before queued writes can sync.
 
-GitHub Actions builds a debug APK for testing and an **unsigned release AAB** as a build artifact. The debug APK is signed with an ephemeral debug key and is not for Play Store submission. The unsigned AAB is also not upload-ready. A production release must be signed using Play App Signing / an owner-controlled upload key; do not commit signing keys or passwords to this repository.
-
-## Pre-publication checks
-
-See [Play Store submission checklist](docs/PLAY_STORE_SUBMISSION_CHECKLIST.md) and [privacy policy draft](docs/PRIVACY_POLICY_DRAFT.md). The privacy policy is a draft only and must be verified against the real backend and hosting configuration before publication.
-
-Test sign-in, ticket submission, photo upload, ticket closure/deletion, external contact links, and network failure behavior on physical Android devices. Some identity providers restrict embedded WebViews; use their supported system-browser/Custom Tabs integration if needed rather than weakening authentication.
+## Authentication handoff
+The website's `?native=1` sign-in return path must exchange the restored AppDeploy access token to the Android deep link `com.zkelite.compucareservice://auth`. Do not put credentials or long-lived refresh tokens in the APK.
