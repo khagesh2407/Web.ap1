@@ -40,6 +40,10 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         store = new OfflineStore(this);
         token = SecureTokenStore.read(this);
+        android.content.SharedPreferences cachedProfile = getSharedPreferences("profile_cache", MODE_PRIVATE);
+        role = cachedProfile.getString("role", "customer");
+        displayName = cachedProfile.getString("name", "COMPUCARE user");
+        email = cachedProfile.getString("email", "");
         handleAuthIntent(getIntent());
         schedulePeriodicSync();
         if (token != null) showWorkspace(); else if (!exchanging) showLogin();
@@ -157,6 +161,7 @@ public class MainActivity extends Activity {
         root.addView(nav);
         setContentView(root);
         renderCached();
+        scheduleImmediateSync();
         refreshOnline();
     }
 
@@ -173,6 +178,8 @@ public class MainActivity extends Activity {
                 role = profile.optString("role", "customer");
                 displayName = profile.optString("name", profile.optString("email", "COMPUCARE user"));
                 email = profile.optString("email", "");
+                getSharedPreferences("profile_cache", MODE_PRIVATE).edit()
+                        .putString("role", role).putString("name", displayName).putString("email", email).apply();
                 JSONArray finalTickets = tickets;
                 runOnUiThread(() -> {
                     busy = false;
@@ -293,7 +300,7 @@ public class MainActivity extends Activity {
                 .setItems(statuses, (d, which) -> {
                     try {
                         JSONObject body = new JSONObject(); body.put("status", statuses[which]);
-                        store.enqueue("PUT", "/api/tickets/" + ticket.optString("id") + "/status", body.toString(), java.util.UUID.randomUUID().toString());
+                        store.queueStatus(ticket.optString("id"), statuses[which], java.util.UUID.randomUUID().toString());
                         scheduleImmediateSync(); toast("Status change queued for sync."); renderCached();
                     } catch (Exception ignored) { }
                 }).setNegativeButton("Cancel", null).show();

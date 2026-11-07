@@ -57,7 +57,7 @@ final class OfflineStore extends SQLiteOpenHelper {
             local.put("issue", body.optString("issue"));
             local.put("priority", body.optString("priority"));
             local.put("status", "pending_sync");
-            local.put("created_at", new java.util.Date().toInstant().toString());
+            local.put("created_at", new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).format(new java.util.Date()));
         } catch (Exception ignored) { }
         ContentValues ticket = new ContentValues();
         ticket.put("id", localId); ticket.put("data", local.toString());
@@ -87,10 +87,40 @@ final class OfflineStore extends SQLiteOpenHelper {
         return result;
     }
 
+    synchronized void queueStatus(String ticketId, String status, String requestId) {
+        SQLiteDatabase db = getWritableDatabase();
+        Cursor cursor = db.rawQuery("SELECT data FROM tickets WHERE id=?", new String[]{ticketId});
+        try {
+            if (cursor.moveToFirst()) {
+                JSONObject ticket = new JSONObject(cursor.getString(0));
+                ticket.put("status", status);
+                ticket.put("sync_pending", true);
+                ContentValues update = new ContentValues();
+                update.put("data", ticket.toString());
+                update.put("pending", 1);
+                update.put("updated_at", System.currentTimeMillis());
+                db.update("tickets", update, "id=?", new String[]{ticketId});
+            }
+        } catch (Exception ignored) { } finally { cursor.close(); }
+        JSONObject body = new JSONObject();
+        try { body.put("status", status); } catch (Exception ignored) { }
+        enqueue("PUT", "/api/tickets/" + ticketId + "/status", body.toString(), "status:" + ticketId + ":" + requestId);
+    }
+
     synchronized void actionSynced(String id) {
         SQLiteDatabase db = getWritableDatabase();
         db.delete("outbox", "id=?", new String[]{id});
-        db.delete("tickets", "id=? AND pending=1", new String[]{id});
+        if (id.startsWith("local-")) {
+            db.delete("tickets", "id=? AND pending=1", new String[]{id});
+        } else if (id.startsWith("status:")) {
+            int separator = id.lastIndexOf(':');
+            if (separator > 7) {
+                String ticketId = id.substring(7, separator);
+                ContentValues update = new ContentValues();
+                update.put("pending", 0);
+                db.update("tickets", update, "id=?", new String[]{ticketId});
+            }
+        }
     }
 
     synchronized JSONArray allTickets() {
