@@ -117,6 +117,13 @@ public final class OperationsActivity extends Activity {
                 TextView line = text(summarize(row),14,Color.rgb(55,68,85),false);
                 line.setPadding(0,dp(7),0,dp(7));
                 card.addView(line);
+                String rowAction = rowActionLabel(key, row, admin, dispatch, inventory);
+                if (rowAction != null) {
+                    Button lifecycle = new Button(this);
+                    lifecycle.setText(rowAction);
+                    lifecycle.setOnClickListener(v -> lifecycleDialog(key, row));
+                    card.addView(lifecycle);
+                }
                 if (i < shown-1) {
                     android.view.View divider = new android.view.View(this);
                     divider.setBackgroundColor(Color.rgb(230,235,241));
@@ -144,6 +151,78 @@ public final class OperationsActivity extends Activity {
             case "tickets": return admin || dispatch;
             default: return false;
         }
+    }
+
+    private String rowActionLabel(String key, JSONObject row, boolean admin, boolean dispatch, boolean inventory) {
+        switch (key) {
+            case "estimates": return "pending".equalsIgnoreCase(row.optString("status")) ? "Review estimate" : null;
+            case "warranties": return "Update claim";
+            case "partners": return admin ? "Verify partner" : null;
+            case "bids": return (admin || dispatch) ? "Decide bid" : null;
+            case "parts": return inventory ? "Adjust stock" : null;
+            default: return null;
+        }
+    }
+
+    private void lifecycleDialog(String key, JSONObject row) {
+        String action;
+        String idKey;
+        String id;
+        String[] choices;
+        switch (key) {
+            case "estimates":
+                action = "estimate.decision"; idKey = "estimateId"; id = row.optString("id");
+                choices = new String[]{"approved","rejected","clarification_requested"}; break;
+            case "warranties":
+                action = "warranty.update"; idKey = "claimId"; id = row.optString("id");
+                choices = new String[]{"submitted","under_review","approved","rejected","settled"}; break;
+            case "partners":
+                action = "partner.verify"; idKey = "partnerId"; id = row.optString("id");
+                choices = new String[]{"verified","rejected","suspended","pending"}; break;
+            case "bids":
+                action = "bid.decision"; idKey = "bidId"; id = row.optString("id");
+                choices = new String[]{"shortlisted","accepted","rejected"}; break;
+            case "parts":
+                inventoryAdjustmentDialog(row); return;
+            default: return;
+        }
+        if (id.isEmpty()) { toast("This record has no server ID. Refresh and try again."); return; }
+        final String chosenAction = action;
+        final String chosenIdKey = idKey;
+        final String chosenId = id;
+        new android.app.AlertDialog.Builder(this).setTitle("Choose status")
+            .setItems(choices, (dialog, which) -> {
+                JSONObject payload = new JSONObject();
+                try {
+                    payload.put("action", chosenAction);
+                    payload.put(chosenIdKey, chosenId);
+                    payload.put("status", choices[which]);
+                    if (chosenAction.equals("estimate.decision")) payload.put("note", "Decision submitted from COMPUCARE Android");
+                } catch (Exception e) { toast("Could not prepare this action."); return; }
+                submitAction(payload);
+            }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void inventoryAdjustmentDialog(JSONObject part) {
+        String partId = part.optString("id");
+        if (partId.isEmpty()) { toast("This inventory item has no server ID."); return; }
+        LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(8),dp(4),dp(8),dp(4));
+        EditText quantity = new EditText(this); quantity.setHint("Adjustment quantity (use negative to remove stock)");
+        quantity.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        EditText reason = new EditText(this); reason.setHint("Reason for adjustment");
+        form.addView(quantity); form.addView(reason);
+        new android.app.AlertDialog.Builder(this).setTitle("Adjust " + part.optString("name","stock"))
+            .setView(form).setNegativeButton("Cancel",null).setPositiveButton("Submit",(dialog,which)->{
+                try {
+                    double qty = Double.parseDouble(quantity.getText().toString().trim());
+                    if (qty == 0) { toast("Enter a non-zero quantity."); return; }
+                    JSONObject payload = new JSONObject();
+                    payload.put("action","inventory.adjust"); payload.put("partId",partId);
+                    payload.put("quantity",qty); payload.put("reason",reason.getText().toString().trim());
+                    submitAction(payload);
+                } catch (Exception e) { toast("Enter a valid adjustment quantity."); }
+            }).show();
     }
 
     private String summarize(JSONObject row) {
