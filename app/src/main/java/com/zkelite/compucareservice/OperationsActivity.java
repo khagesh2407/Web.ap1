@@ -103,6 +103,13 @@ public final class OperationsActivity extends Activity {
             LinearLayout card = card();
             card.addView(text(module[0],17,Color.rgb(15,35,60),true));
             card.addView(text(rows.length() + " records",12,Color.GRAY,false));
+            String actionLabel = actionLabel(key);
+            if (actionLabel != null) {
+                Button actionButton = new Button(this);
+                actionButton.setText(actionLabel);
+                actionButton.setOnClickListener(v -> actionDialog(key));
+                card.addView(actionButton);
+            }
             int shown = Math.min(rows.length(), 8);
             for (int i=0;i<shown;i++) {
                 JSONObject row = rows.optJSONObject(i);
@@ -163,4 +170,97 @@ public final class OperationsActivity extends Activity {
     }
     private android.view.View space() { android.view.View v = new android.view.View(this); v.setLayoutParams(new LinearLayout.LayoutParams(1,dp(10))); return v; }
     private int dp(int n) { return (int)(n*getResources().getDisplayMetrics().density+0.5f); }
-}
+
+    // Native create workflows call the existing authenticated operations API; server-side role checks remain authoritative.
+    private String actionLabel(String key) {
+        switch (key) {
+            case "engineers": return "Add engineer";
+            case "appointments": return "Schedule visit";
+            case "estimates": return "Create estimate";
+            case "invoices": return "Issue invoice";
+            case "payments": return "Record payment";
+            case "parts": return "Add inventory item";
+            case "purchaseOrders": return "Create purchase order";
+            case "organizations": return "Add B2B account";
+            case "amcContracts": return "Create AMC";
+            case "slaPolicies": return "Add SLA policy";
+            case "partners": return "Register partner";
+            case "listings": return "Publish listing";
+            case "bids": return "Submit bid";
+            case "warranties": return "Register warranty claim";
+            case "areas": return "Add service region";
+            case "emailDeliveries": return "Send test email";
+            default: return null;
+        }
+    }
+
+    private void actionDialog(String key) {
+        String action = null;
+        String[] specs = null;
+        switch (key) {
+            case "engineers": action="engineer.create"; specs=new String[]{"name|Full name","email|Email","phone|Phone","skills|Skills (comma separated)","areas|Service area codes (comma separated)","workloadLimit|Workload limit"}; break;
+            case "appointments": action="schedule.create"; specs=new String[]{"ticketId|Ticket ID","engineerId|Engineer ID","startsAt|Start (ISO 8601)","endsAt|End (ISO 8601)"}; break;
+            case "estimates": action="estimate.create"; specs=new String[]{"ticketId|Ticket ID","description|Line item description","quantity|Quantity","unitPrice|Unit price (₹)","taxRate|Tax rate %","discount|Discount (₹)","terms|Terms"}; break;
+            case "invoices": action="invoice.create"; specs=new String[]{"estimateId|Approved estimate ID","dueAt|Due date (ISO 8601, optional)"}; break;
+            case "payments": action="payment.record"; specs=new String[]{"invoiceId|Invoice ID","amount|Amount (₹)","reference|Transaction / receipt reference","method|Method: upi, cash, bank_transfer, card_gateway"}; break;
+            case "parts": action="part.create"; specs=new String[]{"sku|SKU","name|Part name","description|Description","unit|Unit","cost|Cost (₹)","salePrice|Sale price (₹)","reorderLevel|Reorder level","openingStock|Opening stock"}; break;
+            case "purchaseOrders": action="purchase.create"; specs=new String[]{"supplier|Supplier","description|Item description","quantity|Quantity","unitCost|Unit cost (₹)","taxPercent|Tax %","expectedAt|Expected date YYYY-MM-DD"}; break;
+            case "organizations": action="organization.create"; specs=new String[]{"name|Organization name","email|Contact email","slug|Slug (optional)","regionCode|Region code","agreementName|Agreement name (optional)","coverage|Coverage"}; break;
+            case "amcContracts": action="amc.create"; specs=new String[]{"customerEmail|Customer email","startsAt|Start date YYYY-MM-DD","endsAt|End date YYYY-MM-DD","visits|Included visits","amount|Contract amount (₹)","coverage|Coverage"}; break;
+            case "slaPolicies": action="sla.create"; specs=new String[]{"name|Policy name","priority|Priority: low, normal, high, critical","responseMinutes|Response minutes","resolutionMinutes|Resolution minutes"}; break;
+            case "partners": action="partner.create"; specs=new String[]{"legalName|Legal name","partnerType|Type: service_provider, supplier, installer, repair_center","email|Contact email","regionCode|Region code","capabilities|Capabilities (comma separated)"}; break;
+            case "listings": action="listing.create"; specs=new String[]{"partnerId|Verified partner ID","title|Listing title","description|Description","category|Category","regionCode|Region code","priceModel|Price model: fixed, hourly, quote","basePrice|Base price (₹)"}; break;
+            case "bids": action="bid.create"; specs=new String[]{"listingId|Listing ID","partnerId|Verified partner ID","amount|Bid amount (₹)","proposal|Proposal"}; break;
+            case "warranties": action="warranty.create"; specs=new String[]{"customerEmail|Customer email","provider|Provider name","reference|Claim reference","notes|Claim notes"}; break;
+            case "areas": action="service_area.create"; specs=new String[]{"code|Region code","name|Region name","city|City","state|State","postalCodes|PIN codes (comma separated)"}; break;
+            case "emailDeliveries": action="email.test"; specs=new String[]{}; break;
+        }
+        if (action == null) return;
+        LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(dp(8),dp(4),dp(8),dp(4));
+        java.util.LinkedHashMap<String,EditText> inputs = new java.util.LinkedHashMap<>();
+        for (String spec : specs) {
+            String[] pair=spec.split("\\|",2);
+            EditText field=new EditText(this); field.setSingleLine(false); field.setTextSize(15); field.setHint(pair[1]);
+            if (pair[0].equals("description") || pair[0].equals("terms") || pair[0].equals("proposal") || pair[0].equals("notes") || pair[0].equals("coverage")) field.setMinLines(2);
+            inputs.put(pair[0],field); form.addView(field);
+        }
+        ScrollView scroller=new ScrollView(this); scroller.addView(form);
+        final String chosenAction=action;
+        new android.app.AlertDialog.Builder(this).setTitle(actionLabel(key)).setView(scroller)
+            .setNegativeButton("Cancel",null).setPositiveButton("Submit", (dialog,which)->{
+                JSONObject payload=new JSONObject();
+                try {
+                    payload.put("action",chosenAction);
+                    for (java.util.Map.Entry<String,EditText> entry:inputs.entrySet()) {
+                        String k=entry.getKey(), value=entry.getValue().getText().toString().trim();
+                        if (value.isEmpty()) continue;
+                        if (k.equals("skills") || k.equals("areas") || k.equals("postalCodes")) {
+                            JSONArray arr=new JSONArray(); for(String part:value.split(",")) if(!part.trim().isEmpty()) arr.put(part.trim());
+                            payload.put(k.equals("postalCodes")?"postalCodes":k,arr);
+                        } else if (java.util.Arrays.asList("quantity","unitPrice","taxRate","discount","amount","cost","salePrice","reorderLevel","openingStock","unitCost","taxPercent","visits","responseMinutes","resolutionMinutes","workloadLimit","basePrice").contains(k)) {
+                            payload.put(k,Double.parseDouble(value));
+                        } else payload.put(k,value);
+                    }
+                } catch(Exception ex) { toast("Check numeric fields and try again."); return; }
+                submitAction(payload);
+            }).show();
+    }
+
+    private void submitAction(JSONObject payload) {
+        String access=SecureTokenStore.read(this);
+        if(access==null){status.setText("Please sign in again.");return;}
+        status.setText("Submitting securely…");
+        new Thread(()->{
+            try {
+                Request request=new Request.Builder().url(BASE+"/api/operations")
+                    .header("Authorization","Bearer "+access).header("Accept","application/json")
+                    .post(RequestBody.create(payload.toString(),MediaType.get("application/json; charset=utf-8"))).build();
+                try(Response response=http.newCall(request).execute()){
+                    String raw=response.body()==null?"{}":response.body().string();
+                    if(!response.isSuccessful()) throw new Exception(new JSONObject(raw).optString("error","Request failed ("+response.code()+")"));
+                }
+                runOnUiThread(()->{toast("Saved successfully.");load();});
+            }catch(Exception e){runOnUiThread(()->{status.setText("Action not completed.");toast(e.getMessage()==null?"Could not submit action.":e.getMessage());});}
+        }).start();
+    }
+\n}\n
