@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
     private TextView statusText, titleText;
     private String token, role = "customer", displayName = "COMPUCARE user", email = "";
     private boolean busy = false;
+    private boolean exchanging = false;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -41,7 +42,7 @@ public class MainActivity extends Activity {
         token = SecureTokenStore.read(this);
         handleAuthIntent(getIntent());
         schedulePeriodicSync();
-        if (token == null) showLogin(); else showWorkspace();
+        if (token != null) showWorkspace(); else if (!exchanging) showLogin();
     }
 
     @Override protected void onNewIntent(Intent intent) {
@@ -53,13 +54,39 @@ public class MainActivity extends Activity {
 
     private void handleAuthIntent(Intent intent) {
         Uri data = intent == null ? null : intent.getData();
-        if (data != null && "compucare".equals(data.getScheme()) && "auth".equals(data.getHost())) {
-            String incoming = data.getQueryParameter("token");
-            if (incoming != null && incoming.length() > 40) {
-                try { SecureTokenStore.save(this, incoming); token = incoming; }
-                catch (Exception e) { toast("Secure sign-in storage failed. Please try again."); }
+        if (data == null || !"compucare".equals(data.getScheme()) || !"auth".equals(data.getHost())) return;
+        String code = data.getQueryParameter("code");
+        if (code == null || code.length() < 20) return;
+        exchanging = true;
+        showExchange();
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject(); body.put("code", code);
+                Request request = new Request.Builder().url(BASE + "/api/native-auth/exchange")
+                        .post(RequestBody.create(body.toString(), JSON))
+                        .header("Accept", "application/json").build();
+                try (Response response = http.newCall(request).execute()) {
+                    String raw = response.body() == null ? "{}" : response.body().string();
+                    if (!response.isSuccessful()) throw new IOException("Sign-in code expired. Please sign in again.");
+                    String accessToken = new JSONObject(raw).optString("accessToken", "");
+                    if (accessToken.length() < 40) throw new IOException("The sign-in response was incomplete.");
+                    SecureTokenStore.save(this, accessToken);
+                    token = accessToken;
+                }
+                runOnUiThread(() -> { exchanging = false; showWorkspace(); });
+            } catch (Exception e) {
+                runOnUiThread(() -> { exchanging = false; showLogin(); toast(e.getMessage() == null ? "Sign-in could not be completed." : e.getMessage()); });
             }
-        }
+        }).start();
+    }
+
+    private void showExchange() {
+        root = baseLayout();
+        LinearLayout panel = column();
+        panel.setGravity(Gravity.CENTER);
+        panel.addView(text("Completing secure sign-in…", 19, Color.rgb(15, 35, 60), true));
+        root.addView(panel, new LinearLayout.LayoutParams(-1, -1));
+        setContentView(root);
     }
 
     private void showLogin() {
