@@ -263,4 +263,5 @@ public final class OperationsActivity extends Activity {
             }catch(Exception e){runOnUiThread(()->{status.setText("Action not completed.");toast(e.getMessage()==null?"Could not submit action.":e.getMessage());});}
         }).start();
     }
-\n}\n
+    private void toast(String message) { Toast.makeText(this, message, Toast.LENGTH_LONG).show(); }
+}
