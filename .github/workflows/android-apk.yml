@@ -75,6 +75,8 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
             set -Eeuo pipefail
             mkdir -p app/build/outputs/apk/debug/emulator-diagnostics
@@ -89,6 +91,13 @@ jobs:
               exit "$status"
             }
             trap on_failure ERR
+            adb wait-for-device
+            for attempt in $(seq 1 180); do
+              booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+              [ "$booted" = "1" ] && break
+              sleep 2
+            done
+            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.zkelite.compucareservice
             adb shell am start -W -n com.zkelite.compucareservice/.MainActivity
