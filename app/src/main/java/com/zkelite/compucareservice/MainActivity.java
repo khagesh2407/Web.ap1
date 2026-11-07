@@ -137,6 +137,10 @@ public class MainActivity extends Activity {
         tp.topMargin = dp(12); header.addView(titleText, tp);
         statusText = text("Checking connection…", 13, Color.rgb(196, 214, 235), false);
         header.addView(statusText);
+        Button modulesButton = smallButton("Business modules");
+        modulesButton.setTextColor(Color.WHITE);
+        modulesButton.setOnClickListener(v -> startActivity(new Intent(this, OperationsActivity.class)));
+        header.addView(modulesButton);
         root.addView(header);
         ScrollView scroll = new ScrollView(this);
         content = column();
