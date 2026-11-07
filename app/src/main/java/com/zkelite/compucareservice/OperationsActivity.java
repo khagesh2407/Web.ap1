@@ -87,6 +87,15 @@ public final class OperationsActivity extends Activity {
             summary.addView(text("SERVICE METRICS",12,Color.GRAY,true));
             summary.addView(text("Tickets: " + metrics.optInt("tickets") + "   Open: " + metrics.optInt("open"),18,Color.rgb(15,35,60),true));
             summary.addView(text("Customers: " + metrics.optInt("customers") + "   Verified partners: " + metrics.optInt("verifiedPartners"),14,Color.DKGRAY,false));
+            java.util.Iterator<String> metricKeys = metrics.keys();
+            StringBuilder additionalMetrics = new StringBuilder();
+            while (metricKeys.hasNext()) {
+                String metricKey = metricKeys.next();
+                if (java.util.Arrays.asList("tickets","open","customers","verifiedPartners").contains(metricKey)) continue;
+                if (additionalMetrics.length() > 0) additionalMetrics.append("   ·   ");
+                additionalMetrics.append(metricKey.replace('_',' ')).append(": ").append(metrics.opt(metricKey));
+            }
+            if (additionalMetrics.length() > 0) summary.addView(text(additionalMetrics.toString(),13,Color.DKGRAY,false));
             list.addView(summary);
             list.addView(space());
         }
@@ -141,7 +150,8 @@ public final class OperationsActivity extends Activity {
     private boolean allowed(String key, boolean admin, boolean finance, boolean inventory, boolean dispatch, boolean support) {
         switch (key) {
             case "customers": return admin || dispatch || support || finance;
-            case "engineers": case "appointments": case "partners": case "listings": case "bids": case "areas": return dispatch;
+            case "engineers": case "partners": case "listings": case "bids": case "areas": return dispatch;
+            case "appointments": return dispatch || role.equals("engineer");
             case "estimates": case "invoices": case "payments": case "amcContracts": return finance;
             case "parts": return inventory || role.equals("engineer");
             case "purchaseOrders": return inventory;
