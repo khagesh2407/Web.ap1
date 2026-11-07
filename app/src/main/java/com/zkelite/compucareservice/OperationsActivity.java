@@ -245,12 +245,14 @@ public final class OperationsActivity extends Activity {
                         } else payload.put(k,value);
                     }
                 } catch(Exception ex) { toast("Check numeric fields and try again."); return; }
-                if (chosenAction.equals("estimate.create")) {
-                    JSONArray items=new JSONArray(); JSONObject line=new JSONObject();
-                    line.put("description",payload.optString("description")); line.put("quantity",payload.optDouble("quantity",1)); line.put("unitPrice",payload.optDouble("unitPrice",0));
-                    items.put(line); payload.remove("description"); payload.remove("quantity"); payload.remove("unitPrice"); payload.put("items",items);
-                }
-                if (chosenAction.equals("ticket.assign") && "auto".equalsIgnoreCase(payload.optString("engineerId"))) payload.put("autoAssign",true);
+                try {
+                    if (chosenAction.equals("estimate.create")) {
+                        JSONArray items=new JSONArray(); JSONObject line=new JSONObject();
+                        line.put("description",payload.optString("description")); line.put("quantity",payload.optDouble("quantity",1)); line.put("unitPrice",payload.optDouble("unitPrice",0));
+                        items.put(line); payload.remove("description"); payload.remove("quantity"); payload.remove("unitPrice"); payload.put("items",items);
+                    }
+                    if (chosenAction.equals("ticket.assign") && "auto".equalsIgnoreCase(payload.optString("engineerId"))) payload.put("autoAssign",true);
+                } catch (org.json.JSONException ex) { toast("Could not prepare this request."); return; }
                 submitAction(payload);
             }).show();
     }
