@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
 
     private void handleAuthIntent(Intent intent) {
         Uri data = intent == null ? null : intent.getData();
-        if (data == null || !"compucare".equals(data.getScheme()) || !"auth".equals(data.getHost())) return;
+        if (data == null || !"com.zkelite.compucareservice".equals(data.getScheme()) || !"auth".equals(data.getHost())) return;
         String code = data.getQueryParameter("code");
         if (code == null || code.length() < 20) return;
         exchanging = true;
