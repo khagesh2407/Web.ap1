@@ -150,12 +150,15 @@ public class MainActivity extends Activity {
         home.setOnClickListener(v -> refreshOnline());
         Button create = smallButton("New request");
         create.setOnClickListener(v -> newTicketDialog());
+        Button enquiry = smallButton("Product enquiry");
+        enquiry.setOnClickListener(v -> newProductEnquiryDialog());
         Button sync = smallButton("Sync now");
         sync.setOnClickListener(v -> syncNow());
         Button logout = smallButton("Sign out");
         logout.setOnClickListener(v -> signOut());
         nav.addView(home, new LinearLayout.LayoutParams(0, dp(48), 1));
         nav.addView(create, new LinearLayout.LayoutParams(0, dp(48), 1));
+        nav.addView(enquiry, new LinearLayout.LayoutParams(0, dp(48), 1));
         nav.addView(sync, new LinearLayout.LayoutParams(0, dp(48), 1));
         nav.addView(logout, new LinearLayout.LayoutParams(0, dp(48), 1));
         root.addView(nav);
@@ -294,6 +297,52 @@ public class MainActivity extends Activity {
                 }).show();
     }
 
+    private void newProductEnquiryDialog() {
+        LinearLayout form = column();
+        form.setPadding(dp(8), dp(4), dp(8), dp(4));
+        EditText product = field("Product name", "");
+        EditText quantity = field("Quantity", "1");
+        EditText name = field("Contact name", displayName);
+        EditText contactEmail = field("Email address", email);
+        EditText phone = field("Phone number", "");
+        EditText city = field("City", "");
+        EditText requirements = field("Requirements (optional)", "");
+        requirements.setMinLines(3);
+        requirements.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        for (EditText f : new EditText[]{product, quantity, name, contactEmail, phone, city, requirements}) form.addView(f);
+        ScrollView scroller = new ScrollView(this); scroller.addView(form);
+        new AlertDialog.Builder(this).setTitle("Product enquiry").setView(scroller)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Save enquiry", (d, w) -> {
+                    String productValue = product.getText().toString().trim();
+                    String emailValue = contactEmail.getText().toString().trim();
+                    String phoneValue = phone.getText().toString().trim();
+                    int qty;
+                    try { qty = Integer.parseInt(quantity.getText().toString().trim()); }
+                    catch (Exception e) { qty = 0; }
+                    if (productValue.isEmpty() || qty < 1 || name.getText().toString().trim().isEmpty()
+                            || !android.util.Patterns.EMAIL_ADDRESS.matcher(emailValue).matches()
+                            || phoneValue.replaceAll("\\D", "").length() < 7) {
+                        toast("Enter product, quantity, contact name, valid email and phone.");
+                        return;
+                    }
+                    try {
+                        JSONObject body = new JSONObject();
+                        body.put("productName", productValue);
+                        body.put("quantity", qty);
+                        body.put("contactName", name.getText().toString().trim());
+                        body.put("email", emailValue);
+                        body.put("phone", phoneValue);
+                        body.put("city", city.getText().toString().trim());
+                        body.put("requirements", requirements.getText().toString().trim());
+                        store.enqueue("POST", "/api/public/product-enquiry", body.toString(),
+                                "enquiry-" + java.util.UUID.randomUUID());
+                        scheduleImmediateSync();
+                        toast("Product enquiry saved on this device. It will submit when online.");
+                    } catch (Exception e) { toast("Could not save this enquiry."); }
+                }).show();
+    }
+
     private void updateStatus(JSONObject ticket) {
         String[] statuses = {"triaged","assigned","accepted","scheduled","en_route","on_site","diagnosing","awaiting_customer_approval","in_progress","resolved","completed","cancelled","closed"};
         new AlertDialog.Builder(this).setTitle("Update " + ticket.optString("ticket_number"))
@@ -341,7 +390,22 @@ public class MainActivity extends Activity {
     }
 
     private void signOut() {
-        SecureTokenStore.clear(this); token = null; role = "customer"; showLogin();
+        int pending = store.pendingCount();
+        if (pending > 0) {
+            new AlertDialog.Builder(this).setTitle("Pending offline changes")
+                    .setMessage(pending + " changes have not synchronized. Signing out will discard them from this device.")
+                    .setNegativeButton("Keep signed in", null)
+                    .setPositiveButton("Sign out and discard", (dialog, which) -> finishSignOut())
+                    .show();
+        } else finishSignOut();
+    }
+
+    private void finishSignOut() {
+        store.clearAll();
+        getSharedPreferences("profile_cache", MODE_PRIVATE).edit().clear().apply();
+        SecureTokenStore.clear(this);
+        token = null; role = "customer"; displayName = "COMPUCARE user"; email = "";
+        showLogin();
     }
 
     private LinearLayout baseLayout() {

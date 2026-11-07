@@ -135,4 +135,10 @@ final class OfflineStore extends SQLiteOpenHelper {
         Cursor c = getReadableDatabase().rawQuery("SELECT count(*) FROM outbox", null);
         try { return c.moveToFirst() ? c.getInt(0) : 0; } finally { c.close(); }
     }
+
+    synchronized void clearAll() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete("outbox", null, null);
+        db.delete("tickets", null, null);
+    }
 }
