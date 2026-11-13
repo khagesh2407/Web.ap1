@@ -44,12 +44,12 @@ public final class OperationsActivity extends Activity {
         super.onCreate(state);
         role = getSharedPreferences("profile_cache", MODE_PRIVATE).getString("role", "customer");
         root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(245,248,252));
+        root.setBackgroundColor(Color.rgb(246,248,252));
         LinearLayout header = new LinearLayout(this); header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(18),dp(18),dp(18),dp(14)); header.setBackgroundColor(Color.rgb(12,34,61));
+        header.setPadding(dp(20),dp(24),dp(20),dp(18)); header.setBackgroundColor(Color.rgb(12,34,61));
         TextView title = text("Business modules",22,Color.WHITE,true); header.addView(title);
         status = text("Operational data is online-only in this build.",13,Color.rgb(200,215,235),false); header.addView(status);
-        Button back = new Button(this); back.setText("Back to tickets"); back.setOnClickListener(v -> finish()); header.addView(back);
+        Button back = new Button(this); back.setText("Back to tickets"); back.setAllCaps(false); back.setTextColor(Color.WHITE); back.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(31,86,132))); back.setOnClickListener(v -> finish()); header.addView(back);
         root.addView(header);
         ScrollView scroll = new ScrollView(this);
         list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(dp(14),dp(14),dp(14),dp(22));
@@ -252,7 +252,7 @@ public final class OperationsActivity extends Activity {
         LinearLayout c = new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL);
         c.setPadding(dp(15),dp(12),dp(15),dp(12));
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setColor(Color.WHITE); bg.setCornerRadius(dp(14)); c.setBackground(bg); return c;
+        bg.setColor(Color.WHITE); bg.setCornerRadius(dp(18)); bg.setStroke(dp(1),Color.rgb(228,235,242)); c.setBackground(bg); c.setElevation(dp(2)); return c;
     }
     private TextView text(String s,int size,int color,boolean bold) {
         TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(color);
