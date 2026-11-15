@@ -124,7 +124,7 @@ public class MainActivity extends Activity {
     }
 
     private void openLogin() {
-        Uri uri = Uri.parse(BASE + "/?native=1");
+        Uri uri = Uri.parse(BASE + "/portal.html?native=1");
         try { new CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(this, uri); }
         catch (Exception e) { startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
     }
