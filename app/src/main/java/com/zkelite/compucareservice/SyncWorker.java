@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class SyncWorker extends Worker {
-    static final String BASE = "https://compucare-service-sf3up4.v2.appdeploy.ai";
+    static final String BASE = "https://zkelite.store";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build();
