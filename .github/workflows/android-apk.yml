@@ -2,7 +2,7 @@ name: Build and smoke-test COMPUCARE Android app
 
 on:
   push:
-    branches: [main, native-offline-android]
+    branches: [main, uiux/premium-native-refresh, cloudflare-backend-migration]
     paths:
       - "app/**"
       - "*.gradle.kts"
@@ -41,7 +41,7 @@ jobs:
           gradle-version: "8.11.1"
 
       - name: Check hosted website availability
-        run: curl --fail --silent --show-error --location --max-time 30 --output /dev/null --write-out "COMPUCARE website HTTP %{http_code}\\n" https://compucare-service-sf3up4.v2.appdeploy.ai/
+        run: curl --fail --silent --show-error --location --max-time 30 --output /dev/null --write-out "COMPUCARE website HTTP %{http_code}\\n" https://zkelite.store/
 
       - name: Build debug APK and release bundle
         run: gradle --no-daemon clean assembleDebug bundleRelease

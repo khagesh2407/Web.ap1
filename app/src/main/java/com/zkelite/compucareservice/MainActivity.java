@@ -124,7 +124,7 @@ public class MainActivity extends Activity {
     }
 
     private void openLogin() {
-        Uri uri = Uri.parse(BASE + "/?native=1");
+        Uri uri = Uri.parse(BASE + "/portal.html?native=1");
         try { new CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(this, uri); }
         catch (Exception e) { startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
     }
@@ -428,13 +428,15 @@ public class MainActivity extends Activity {
     private LinearLayout baseLayout() {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setBackgroundColor(Color.rgb(245, 248, 252));
+        layout.setBackgroundColor(Color.rgb(246, 248, 252));
         return layout;
     }
     private LinearLayout column() { LinearLayout l = new LinearLayout(this); l.setOrientation(LinearLayout.VERTICAL); return l; }
     private LinearLayout card() {
         LinearLayout c = column(); c.setPadding(dp(16), dp(14), dp(16), dp(14));
-        c.setBackground(round(Color.WHITE, 16)); return c;
+        c.setBackground(round(Color.WHITE, 18));
+        c.setElevation(dp(2));
+        return c;
     }
     private TextView text(String value, int size, int color, boolean bold) {
         TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(color);
@@ -443,12 +445,18 @@ public class MainActivity extends Activity {
     }
     private Button button(String value) {
         Button b = new Button(this); b.setText(value); b.setTextColor(Color.WHITE);
-        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(16, 75, 130)));
+        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(20, 93, 168)));
+        b.setAllCaps(false);
+        b.setMinHeight(dp(50));
         return b;
     }
     private Button smallButton(String value) {
         Button b = new Button(this); b.setText(value); b.setTextSize(11);
-        b.setPadding(dp(2), 0, dp(2), 0); return b;
+        b.setPadding(dp(2), 0, dp(2), 0);
+        b.setAllCaps(false);
+        b.setTextColor(Color.rgb(255, 255, 255));
+        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(24, 71, 119)));
+        return b;
     }
     private EditText field(String hint, String value) {
         EditText e = new EditText(this); e.setSingleLine(false); e.setText(value); e.setHint(hint);
